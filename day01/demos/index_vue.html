@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- <script src="../../node_modules/vue/dist/vue.js"></script> -->
+</head>
+<body>
+    <h1>第一个页面</h1>
+    <div>
+        <div id="root">
+            <div>
+                {{name}}-{{msg}}
+            </div>
+            <p>{{name}}</p>
+            <p>{{msg}}</p>
+        </div>
+    </div>
+    <script>
+
+        let tmpNode = document.querySelector('#root');
+        let data = {
+            name: 'bc',
+            msg: '1111111111111'
+        }
+        compiler(tmpNode, data);
+        function compiler(template, data) {
+            let reg = /\{\{(.+?)\}\}/g;
+            let childNodes = template.childNodes || [];
+            childNodes.forEach(element => {
+                let nodeType = element.nodeType; // 1 元素 3 文本
+                if(nodeType === 3) { // 文本节点 {{}}
+                    let text = element.nodeValue; 
+                    text = text.replace(reg, (regValue, g1) => { // 第零个表示匹配到的内容，第n个参数表示匹配到的内容
+                        let key = g1.trim(); // 消除空格
+                        return data[key]; // 返回数据里面的值
+                    })
+                    element.nodeValue = text; // 把进行数据替换后的值替换回去
+                } else if (nodeType === 1) { // 元素节点需要考虑子元素
+                    compiler(element, data); // 递归
+                }
+            });
+        }
+    </script>
+</body>
+</html>

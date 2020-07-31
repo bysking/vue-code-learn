@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="../../node_modules/vue/dist/vue.js"></script>
+</head>
+<body>
+    <h1>第一个页面</h1>
+    <div>
+        <div id="root">
+            <p>{{name}}</p>
+            <p>{{message}}</p>
+        </div>
+    </div>
+    <script>
+        let app = new Vue({
+            el: '#root',
+            data: {
+                name: '张灿',
+                message: '是一个男人'
+            }
+        })
+    </script>
+</body>
+</html>
