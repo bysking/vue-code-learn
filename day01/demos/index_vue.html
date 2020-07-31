@@ -24,7 +24,13 @@
             name: 'bc',
             msg: '1111111111111'
         }
-        compiler(tmpNode, data);
+
+        // 需要保留原来的，因为响应式msg变化会重新用模板渲染
+        let generateNode = tmpNode.cloneNode(true); // deep 可选
+        // 是否采用 深度克隆,如果为true,则该节点的所有后代节点也都会被克隆,如果为false,则只克隆该节点本身.
+        
+        compiler(generateNode, data);
+        root.parentNode.replaceChild(generateNode, root)
         function compiler(template, data) {
             let reg = /\{\{(.+?)\}\}/g;
             let childNodes = template.childNodes || [];
