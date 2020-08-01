@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>使用构造函数的形式</h1>
+    <div>
+        <div id="root">
+            <div>
+                {{name}}-{{msg}}
+            </div>
+            <p>{{name.firstName}} - {{name.lastName}}</p>
+            <p>{{msg}}</p>
+        </div>
+    </div>
+    <script>
+        function compiler(template, data) {
+            let reg = /\{\{(.+?)\}\}/g;
+            let childNodes = template.childNodes || [];
+            childNodes.forEach(element => {
+                let nodeType = element.nodeType; // 1 元素 3 文本
+                if(nodeType === 3) { // 文本节点 {{}}
+                    let text = element.nodeValue; 
+                    text = text.replace(reg, (regValue, g1) => { // 第零个表示匹配到的内容，第n个参数表示匹配到的内容
+                        let key = g1.trim(); // 消除空格
+                        // return data[key]; // 返回数据里面的值
+                        return getExpr(data, key); // 返回数据里面的值
+                    })
+                    element.nodeValue = text; // 把进行数据替换后的值替换回去
+                } else if (nodeType === 1) { // 元素节点需要考虑子元素
+                    compiler(element, data); // 递归
+                }
+            });
+        }
+        function JGVue (options) {
+            this._data = options.data || {};
+            this._el = options.el;
+
+            this.$el = this._templateNode = document.querySelector(this._el);
+            this._parent = this._templateNode.parentNode; // 存下父节点，后面编译好好dom后用于替换桥梁
+
+            this.render();
+        }
+
+        // 将模板结合数据
+        JGVue.prototype.render = function () {
+            this.compiler();
+        }
+
+        // 将模板与数据结合形成真正的Dom
+        JGVue.prototype.compiler = function () {
+            let realHTMLDom = this._templateNode.cloneNode(true);
+            compiler(realHTMLDom,this._data);
+            this.update(realHTMLDom);
+        }
+
+        // 将Dom放到页面
+        JGVue.prototype.update = function (realHTMLDom) {
+            this._parent.replaceChild(realHTMLDom, this.$el)
+        }
+
+        function getExpr (obj, expr) {
+
+            // name.firstName.xx.xx...
+            let pathArr = expr.split('.');
+            let result = pathArr.reduce
+            ((res, cur, index) => {
+                res = res[cur];
+                return res;
+            }, obj);
+            return result;
+        }
+
+        new JGVue({
+            el: '#root',
+            data: {
+                name: {
+                    firstName: '罗',
+                    lastName: '小黑'
+                }
+            }
+        })
+    </script>
+</body>
+</html>
