@@ -44,3 +44,49 @@ function compiler(template, data) {
 }
 ```
 
+# 2. 实现多级数据对象处理去取值
+
+- 常规方式
+```
+function getExpr (obj, expr) {
+
+    // name.firstName.xx.xx...
+    let pathArr = expr.split('.');
+    let result = pathArr.reduce
+    ((res, cur, index) => {
+        res = res[cur];
+        return res;
+    }, obj);
+    return result;
+}
+```
+
+- 闭包方式
+
+```
+    function createValueByPath(path) {
+        let pathArr = path.split('.');
+
+        return function getValueByPath(obj) {
+            let result = pathArr.reduce
+                ((res, cur, index) => {
+                    res = res[cur];
+                    return res;
+                }, obj);
+
+            return result;
+        };
+    }
+
+    let getValueByPath = createValueByPath('a.b.c');
+
+    let data = {
+        a: {
+            b: {
+                c: '罗小黑'
+            }
+        }
+    }
+
+    console.log(getValueByPath(data));
+```

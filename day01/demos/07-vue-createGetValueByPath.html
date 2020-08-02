@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script>
+        function createValueByPath(path) {
+            let pathArr = path.split('.');
+
+            return function getValueByPath(obj) {
+                let result = pathArr.reduce
+                    ((res, cur, index) => {
+                        res = res[cur];
+                        return res;
+                    }, obj);
+
+                return result;
+            };
+        }
+
+        let getValueByPath = createValueByPath('a.b.c');
+
+        let data = {
+            a: {
+                b: {
+                    c: '罗小黑'
+                }
+            }
+        }
+
+        console.log(getValueByPath(data));
+
+    </script>
+</body>
+
+</html>
