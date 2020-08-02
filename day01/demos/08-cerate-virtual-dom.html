@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div class="bc" title="111">222</div>
+        <ul>
+            <li>1</li>
+            <li>2</li>
+            <li>3</li>
+        </ul>
+    </div>
+    <div>
+        原样渲染
+        <div id="render"></div>
+    </div>
+    <script>
+        class VNode {
+
+            // tyep: 3 文本节点 1 标签节点
+            constructor(tag, data, value, type) {
+                this.tag = tag && tag.toLowerCase();
+                this.nodeName = this.tag;
+                this.attributes = data;
+                this.nodeValue = value;
+                this.value = value;
+                this.nodeType = type;
+                this.childNodes = [];
+            }
+            appendChild(vnode) {
+                this.childNodes.push(vnode)
+            }
+        }
+
+        /**
+         * @param {dom} 真实dom. 
+         */
+        function getVnode(dom) {
+            // 使用递归遍历Dom生成虚拟dom
+
+            let nodeType = dom.nodeType;
+            let _vNode;
+
+            if (nodeType === 1) { // 元素节点
+
+                let nodeName = dom.nodeName;
+                let attributes = dom.attributes;
+
+                // 将属性数组转换成对象表述
+                let _attrObj = {};
+                Array.from(attributes).forEach(item => { // 属性节点nodeType === 2
+                    _attrObj[item.nodeName] = item.nodeValue;
+                })
+
+                _vNode = new VNode(nodeName, _attrObj, undefined, dom.nodeType);
+
+                let childNodes = dom.childNodes;// 递归处理子节点 换行，注释也会是子节点，看是否需要处理
+                childNodes.forEach((child) => {
+                    _vNode.appendChild(getVnode(child));
+                })
+            } else if (nodeType === 3) {// 文本节点
+                _vNode = new VNode(undefined, undefined, dom.nodeValue, dom.nodeType);
+            }
+
+            return _vNode;
+        }
+
+        /**
+         * @param {Object} vNode 虚拟节点. 
+         */
+        function parseNode(vNode) {
+            return createHtmlDom(vNode);
+        }
+
+        function createHtmlDom(node) {
+            let dom;
+            if (node.nodeType === 1) { // 标签节点
+                dom = document.createElement(node.nodeName);
+                Object.keys(node.attributes).forEach(key => {
+                    dom.setAttribute(key, node.attributes[key])
+                })
+                let children = node.childNodes;
+                children.length && children.forEach(child => {
+                    dom.appendChild(createHtmlDom(child))
+                })
+            } else if (node.nodeType === 3) {// 文本节点
+                dom= document.createTextNode(node.nodeValue);
+            }
+
+            return dom;
+        }
+
+        let root = document.querySelector('#root');
+        let myVNode = getVnode(root);
+        console.log(myVNode);
+
+        let myDom = parseNode(myVNode);
+        let rendDom = document.querySelector('#render');
+        rendDom.appendChild(myDom);
+    </script>
+</body>
+
+</html>

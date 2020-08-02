@@ -90,3 +90,130 @@ function getExpr (obj, expr) {
 
     console.log(getValueByPath(data));
 ```
+
+# 3. 虚拟Dom-提升性能
+
+- 怎么将真正的Dom转化成虚拟Dom
+- 怎么将虚拟Dom转化成真正的Dom（思路与深度拷贝类似）
+
+- 常见情况
+```
+
+// 标签表示
+<div /> => { tag: 'div' }
+
+// 标签内容
+文本节点 => { tag: 'div',value }
+
+// 标签属性
+<div class="c"/> => { tag: 'div', data: {
+    class: 'c'
+} }
+
+// 嵌套版本
+<div>
+    <div>
+
+    </div> 
+</div> 
+
+=> { tag: 'div', children: [
+    {
+        tag: 'div'
+    }
+] }
+
+```
+
+- 如何将真实Dom转化成虚拟Dom
+```
+        /**
+         * @param {dom} 真实dom. 
+         */
+        function getVnode(dom) {
+            // 使用递归遍历Dom生成虚拟dom
+
+            let nodeType = dom.nodeType;
+            let _vNode;
+
+            if (nodeType === 1) { // 元素节点
+
+                let nodeName = dom.nodeName;
+                let attributes = dom.attributes;
+
+                // 将属性数组转换成对象表述
+                let _attrObj = {};
+                Array.from(attributes).forEach(item => { // 属性节点nodeType === 2
+                    _attrObj[item.nodeName] = item.nodeValue;
+                })
+
+                _vNode = new VNode(nodeName, _attrObj, undefined, dom.nodeType);
+
+                let childNodes = dom.childNodes;// 递归处理子节点 换行，注释也会是子节点，看是否需要处理
+                childNodes.forEach((child) => {
+                    _vNode.appendChild(getVnode(child));
+                })
+            } else if (nodeType === 3) {// 文本节点
+                _vNode = new VNode(undefined, undefined, dom.nodeValue, dom.nodeType);
+            }
+
+            return _vNode;
+        }
+```
+
+- 如何将虚拟Dom转换成真实Dom
+
+```
+        /**
+         * @param {Object} vNode 虚拟节点. 
+         */
+        function parseNode(vNode) {
+            return createHtmlDom(vNode);
+        }
+
+        function createHtmlDom(node) {
+            let dom;
+            if (node.nodeType === 1) { // 标签节点
+                dom = document.createElement(node.nodeName);
+                Object.keys(node.attributes).forEach(key => {
+                    dom.setAttribute(key, node.attributes[key])
+                })
+                let children = node.childNodes;
+                children.length && children.forEach(child => {
+                    dom.appendChild(createHtmlDom(child))
+                })
+            } else if (node.nodeType === 3) {// 文本节点
+                dom= document.createTextNode(node.nodeValue);
+            }
+
+            return dom;
+        }
+```
+
+- 测试用例
+
+html部分
+```
+    <div id="root">
+        <div class="bc" title="111">222</div>
+        <ul>
+            <li>1</li>
+            <li>2</li>
+            <li>3</li>
+        </ul>
+    </div>
+    <div>
+        原样渲染
+        <div id="render"></div>
+    </div>
+```
+js代码部分
+```
+        let root = document.querySelector('#root');
+        let myVNode = getVnode(root);
+        console.log(myVNode);
+
+        let myDom = parseNode(myVNode);
+        let rendDom = document.querySelector('#render');
+        rendDom.appendChild(myDom);
+```
