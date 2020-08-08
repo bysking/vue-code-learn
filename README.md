@@ -217,3 +217,52 @@ js代码部分
         let rendDom = document.querySelector('#render');
         rendDom.appendChild(myDom);
 ```
+
+# 4. 函数柯里化
+
+- 柯里化： 函数返回接受一个参数的函数
+- 偏函数： 函数返回接受一部分参数的函数
+- 高阶函数：接收一个函数作为参数进行加工，这个加工函数叫做高阶函数。
+
+- 为什么需要用柯里化
+
+为了提升性能，可以缓存一部分能力：案例【判断元素，虚拟Dom的render方法】
+
+- vue本质上使用html的字符串作为模板进行解析传华为ast再转化为vnode第一个阶段最消耗性能
+
+- vue如何区分自定义组件？枚举
+
+```
+let tags = 'div,p,img,ul,li';
+
+function isHtmlTag(tag) {
+    return tags.split(',').includes(tag); // 每判断一次都要进行循环
+}
+
+使用闭包版本缓存
+
+function isHTMLTag(tags) {
+
+    let tagMap = {};
+
+    tags.split(',').forEach(key => {
+        tagMap[key] = true;
+    })
+
+    return function (tag) {
+        return !!tagMap[tag.toLowerCase()]
+    }
+}
+```
+
+- 虚拟Dom的render方法
+
+
+（思考：vue项目中模板转换为抽象语法树需要执行几次）
+
+  - 页面一开始
+  - 每一个属性发生变化到的时候
+  - watch,computed等
+
+- render的作用：将虚拟DOM渲染成真实DOM加到页面
+- 虚拟DOM降级理解为AST,模板不变，AST不变

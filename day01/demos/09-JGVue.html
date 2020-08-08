@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <h1>优化Dom模板解析</h1>
+    <div>
+        <div id="root"><div>{{name}}-{{msg}}</div><p>{{name}}</p><p>{{msg}}</p></div>
+    </div>
+    <script>
+
+        // Vnode
+        class VNode {
+
+            // tyep: 3 文本节点 1 标签节点
+            constructor(tag, data, value, type) {
+                this.tag = tag && tag.toLowerCase();
+                this.nodeName = this.tag;
+                this.attributes = data;
+                this.nodeValue = value;
+                this.value = value;
+                this.nodeType = type;
+                this.childNodes = [];
+            }
+            appendChild(vnode) {
+                this.childNodes.push(vnode)
+            }
+        }
+
+        /**
+        * @param {dom} 真实dom. 真实Dom => 虚拟Dom 当成Compiler函数
+        */
+        function getVnode(dom) {
+            // 使用递归遍历Dom生成虚拟dom
+
+            let nodeType = dom.nodeType;
+            let _vNode;
+
+            if (nodeType === 1) { // 元素节点
+
+                let nodeName = dom.nodeName;
+                let attributes = dom.attributes;
+
+                // 将属性数组转换成对象表述
+                let _attrObj = {};
+                Array.from(attributes).forEach(item => { // 属性节点nodeType === 2
+                    _attrObj[item.nodeName] = item.nodeValue;
+                })
+
+                _vNode = new VNode(nodeName, _attrObj, undefined, dom.nodeType);
+
+                let childNodes = dom.childNodes;// 递归处理子节点 换行，注释也会是子节点，看是否需要处理
+                childNodes.forEach((child) => {
+                    _vNode.appendChild(getVnode(child));
+                })
+            } else if (nodeType === 3) {// 文本节点
+                _vNode = new VNode(undefined, undefined, dom.nodeValue, dom.nodeType);
+            }
+
+            return _vNode;
+        }
+
+        function compiler(template, data) {
+            let reg = /\{\{(.+?)\}\}/g;
+            let childNodes = template.childNodes || [];
+            childNodes.forEach(element => {
+                let nodeType = element.nodeType; // 1 元素 3 文本
+                if (nodeType === 3) { // 文本节点 {{}}
+                    let text = element.nodeValue;
+                    text = text.replace(reg, (regValue, g1) => { // 第零个表示匹配到的内容，第n个参数表示匹配到的内容
+                        let key = g1.trim(); // 消除空格
+                        return data[key]; // 返回数据里面的值
+                    })
+                    element.nodeValue = text; // 把进行数据替换后的值替换回去
+                } else if (nodeType === 1) { // 元素节点需要考虑子元素
+                    compiler(element, data); // 递归
+                }
+            });
+        }
+        function JGVue(options) {
+            this._data = options.data || {};
+            this._el = options.el; // 在Vue中是字符串，我们这里是Dom简化版
+
+            this.$el = this._templateNode = document.querySelector(this._el);
+            this._parent = this._templateNode.parentNode; // 存下父节点，后面编译好好dom后用于替换桥梁
+
+            this.mount();
+        }
+
+        // 将模板结合数据
+        JGVue.prototype.mount = function () {
+            this.render = this.createRenderFn();
+            this.mountComponent();
+        }
+
+        JGVue.prototype.mountComponent = function () {
+            let mount = () => {
+                this.update(this.render())
+            }
+            mount.call(this)
+        }
+        // 目的是缓存AST,vue中使用了二次提交的设计结构，事务
+        /**
+         * 真实Dom和虚拟Dom是一一对应的关系
+         * 先将AST和数据生成新的Vnode (新render）
+         * 再将旧的Vnode和新的Vnode进行比较 diff 更新 update
+         * 
+         * */
+        JGVue.prototype.createRenderFn = function () {
+
+            let ast = getVnode(this._templateNode);
+
+            // vue: AST + DATA => Vnode
+            // 我们： 带坑的Vnode +data => 含有数据的Vnode
+            return function render() {
+                let _temp = combine(ast, this._data)
+                return _temp;
+            }
+        }
+
+
+        function getExpr(obj, expr) {
+
+            // name.firstName.xx.xx...
+            let pathArr = expr.split('.');
+            let result = pathArr.reduce
+                ((res, cur, index) => {
+                    res = res[cur];
+                    return res;
+                }, obj);
+            return result;
+        }
+        // 将有坑的Vnode与data结合得到填充数据的Vnode
+        function combine(vNode, data) {
+            let _type = vNode.nodeType;
+            let _data = vNode.attributes;
+            let _value = vNode.value;
+            let _tag = vNode.tag;
+            let children = vNode.childNodes;
+            let _reg = /\{\{(.+?)\}\}/g;
+
+            let _vNode = null;
+
+            if (_type === 3) {
+                _value = _value.replace(_reg, (_, g) => {
+                    return getExpr(data, g.trim())
+                })
+
+                _vNode = new VNode(_tag, _data, _value, _type)
+            } else if (_type === 1) {
+                _vNode =new VNode(_tag, _data, undefined, _type);
+                children.forEach(child => {
+                    _vNode.appendChild(combine(child, data))
+                })
+            }
+
+            return _vNode;
+        }
+        JGVue.prototype.render = function () {
+            this.compiler();
+        }
+
+        // 将模板与数据结合形成真正的Dom
+        // JGVue.prototype.compiler = function () {
+        //     let realHTMLDom = this._templateNode.cloneNode(true);
+        //     compiler(realHTMLDom,this._data);
+        //     this.update(realHTMLDom);
+        // }
+
+        // 将虚拟Dom渲染到页面中 diff
+        JGVue.prototype.update = function (realHTMLDom) {
+            this._parent.replaceChild(realHTMLDom, this.$el)
+        }
+
+        let app = new JGVue({
+            el: '#root',
+            data: {
+                name: '罗小黑',
+                msg: '起床吃饭了'
+            }
+        })
+    </script>
+</body>
+
+</html>
